@@ -1,0 +1,44 @@
+# Environment
+.env
+.venv/
+venv/
+env/
+*.session
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node (whatsapp provider's Baileys sidecar)
+node_modules/
+# WhatsApp session credentials — equivalent to a login token, never commit.
+auth_state/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/settings.json
+
+# Data / logs
+*.log
+pgdata/
+services/analyzers/facial/extracted_faces/
+pipeline_output/
+services/analyzers/face_pipeline/output/
+reports/
+
+# Vendored third-party clones (set up separately per README; not part of this repo)
+/Moriarty-Project/
+/holehe/
+
+# Local scratch / ad-hoc test assets, not part of the project
+/imgs/
+/t.txt

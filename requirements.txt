@@ -1,0 +1,55 @@
+# --- Core framework ---
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+
+# --- Database (standby infra: Postgres schema tooling; nothing writes yet) ---
+sqlalchemy==2.0.32
+alembic==1.13.0
+psycopg2-binary==2.9.10   # 2.9.10 ships cp313 wheels (2.9.9 has none for Py3.13)
+pgvector==0.3.0
+
+# --- Schemas / config ---
+pydantic==2.9.0
+pydantic-settings==2.5.0
+
+# --- HTTP client (content profiler → Ollama; test client) ---
+httpx==0.27.0
+
+# --- Providers ---
+telethon==1.36.0          # telegram provider
+playwright==1.48.0        # moriarty FindOwner (Truecaller) + yandeximage provider; ships cp313 wheels
+# Reddit provider: official API key issuance is gated, so we scrape via a
+# cookie-authenticated browser session instead (~100 calls/hour, self-
+# throttling). redscrapslib ships a bundled .NET assembly and needs the
+# .NET 10 runtime installed separately (see README / human tasks).
+redscrapslib==0.1.6
+browser_cookie3==0.20.1
+# maigret is installed separately (heavy, pins many deps) — see README.
+# Run:  pip install maigret   then verify:  maigret testuser123 --top-sites 50
+# Holehe provider: local clone at holehe/, imported in-process (not pip-installed
+# — see services/providers/holehe/provider.py). These are its own runtime deps.
+trio==0.33.0
+termcolor==3.3.0
+tqdm==4.68.3
+colorama==0.4.6
+
+# --- Moriarty-Project phone enrichment: its Investigation/ modules are
+# imported in-process (services/providers/moriarty/provider.py) from the local
+# clone at Moriarty-Project/, not installed as a package. ---
+requests==2.34.2
+beautifulsoup4==4.15.0
+lxml==6.1.1
+pytz==2026.2
+phonenumbers==8.13.0
+
+# --- Analyzers ---
+jellyfish==1.1.0          # username analyzer
+vaderSentiment==3.3.2     # content profiler
+scikit-learn==1.5.2       # content profiler TF-IDF; bumped to 1.5.2 for cp313
+ImageHash==4.3.1          # image similarity (pHash)
+Pillow==12.3.0            # facial + image similarity
+
+# --- Dev / test (not required to run the services) ---
+pytest==8.3.2
+pytest-asyncio==0.23.8
+asgi-lifespan==2.1.0

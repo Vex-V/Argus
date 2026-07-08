@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    # This image includes the pgvector extension pre-installed.
+    # PostgreSQL is kept as standby infrastructure — providers and analyzers
+    # are stateless and do not write to it yet.
+    environment:
+      POSTGRES_USER: argus
+      POSTGRES_PASSWORD: argus_dev
+      POSTGRES_DB: argus
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U argus -d argus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

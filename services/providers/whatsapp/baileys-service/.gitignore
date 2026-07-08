@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# WhatsApp session credentials — equivalent to being logged into the linked
+# account. Never commit this.
+auth_state/

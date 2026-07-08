@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "argus": {
+      "command": "C:\\Users\\.a\\codes\\.vscode\\python\\Argus\\.venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\.a\\codes\\.vscode\\python\\Argus\\argus-mcp\\server.py"
+      ],
+      "env": {
+        "ARGUS_BASE_URL": "http://localhost:8000",
+        "ARGUS_TIMEOUT": "180"
+      }
+    }
+  }
+}
