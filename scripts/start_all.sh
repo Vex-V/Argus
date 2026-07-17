@@ -1,5 +1,5 @@
 #!/bin/bash
-# Launch all Argus services (7 providers + 8 analyzers).
+# Launch all Argus services (11 providers + 9 analyzers).
 #
 # Does NOT start the whatsapp-sidecar (Node/Baileys) — that needs an
 # interactive terminal for the one-time QR-code login. Start it separately:
@@ -41,6 +41,10 @@ echo "Starting provider services..."
 "$PY" -m uvicorn services.providers.holehe.main:app              --port 8024 --reload &
 "$PY" -m uvicorn services.providers.whatsapp.main:app            --port 8025 --reload &
 "$PY" -m uvicorn services.providers.yandeximage.main:app         --port 8026 --reload &
+"$PY" -m uvicorn services.providers.whatsmyname.main:app         --port 8027 --reload &
+"$PY" -m uvicorn services.providers.ignorant.main:app            --port 8028 --reload &
+"$PY" -m uvicorn services.providers.socialanalyzer.main:app      --port 8029 --reload &
+"$PY" -m uvicorn services.providers.ghunt.main:app               --port 8030 --reload &
 
 echo "Starting analyzer services..."
 "$PY" -m uvicorn services.analyzers.username.main:app           --port 8010 --reload &
@@ -51,6 +55,7 @@ echo "Starting analyzer services..."
 "$PY" -m uvicorn services.analyzers.content_profiler.main:app   --port 8015 --reload &
 "$PY" -m uvicorn services.analyzers.image_similarity.main:app   --port 8016 --reload &
 "$PY" -m uvicorn services.analyzers.face_pipeline.main:app      --port 8017 --reload &
+"$PY" -m uvicorn services.analyzers.metadata.main:app           --port 8018 --reload &
 
 cat <<'PORTS'
 
@@ -63,7 +68,10 @@ All services started. Port map:
   8024  Holehe                 8014  Contacts
   8025  WhatsApp               8015  Content Profiler
   8026  Yandex Image           8016  Image Similarity
-                               8017  Face Pipeline
+  8027  WhatsMyName            8017  Face Pipeline
+  8028  Ignorant               8018  Image Metadata
+  8029  Social Analyzer
+  8030  GHunt
 
 PORTS
 

@@ -36,8 +36,7 @@ services/analyzers/face_pipeline/output/
 reports/
 
 # Vendored third-party clones (set up separately per README; not part of this repo)
-/Moriarty-Project/
-/holehe/
+/external/
 
 # Local scratch / ad-hoc test assets, not part of the project
 /imgs/

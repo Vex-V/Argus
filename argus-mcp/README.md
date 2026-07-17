@@ -10,8 +10,8 @@ query and how to chain the results through the analyzers.
 This server is a **pure HTTP client** of the existing Argus API. It:
 
 - imports **nothing** from the Argus services and changes **no** Argus code;
-- calls the same routes documented in [`../ENDPOINTS.md`](../ENDPOINTS.md) /
-  [`../routes.md`](../routes.md), exactly like `curl` would;
+- calls the same routes documented in [`../routes.md`](../routes.md), exactly
+  like `curl` would;
 - lives entirely in this `argus-mcp/` folder.
 
 Nothing in the existing project is modified or turned off. The Argus API keeps

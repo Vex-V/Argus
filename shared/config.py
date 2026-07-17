@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     holehe_url: str = "http://localhost:8024"
     whatsapp_url: str = "http://localhost:8025"
     yandeximage_url: str = "http://localhost:8026"
+    whatsmyname_url: str = "http://localhost:8027"
+    ignorant_url: str = "http://localhost:8028"
+    socialanalyzer_url: str = "http://localhost:8029"
+    ghunt_url: str = "http://localhost:8030"
     username_analyzer_url: str = "http://localhost:8010"
     facial_analyzer_url: str = "http://localhost:8011"
     text_analyzer_url: str = "http://localhost:8012"
@@ -29,6 +33,7 @@ class Settings(BaseSettings):
     content_profiler_url: str = "http://localhost:8015"
     image_similarity_url: str = "http://localhost:8016"
     face_pipeline_analyzer_url: str = "http://localhost:8017"
+    metadata_analyzer_url: str = "http://localhost:8018"
 
     # Content profiler tone backend (optional — degrades without it)
     ollama_url: str = "http://localhost:11434"
@@ -43,6 +48,7 @@ class Settings(BaseSettings):
     # --- Moriarty provider ---
     # Local clone of https://github.com/AzizKaplan/Moriarty-Project — its
     # Investigation/ modules are imported in-process (see providers/moriarty).
+    # Defaults to external/Moriarty-Project.
     moriarty_project_path: str | None = None
     # Truecaller "FindOwner" lookup logs into this Google account to search
     # Truecaller's web UI. Use a disposable/burner account — automated sign-in
@@ -67,6 +73,7 @@ class Settings(BaseSettings):
     # --- Holehe provider ---
     # Local clone of https://github.com/megadose/holehe — its modules/ site
     # checkers are imported in-process (see providers/holehe), not pip-installed.
+    # Defaults to external/holehe.
     holehe_project_path: str | None = None
 
     # --- WhatsApp provider ---
@@ -74,6 +81,34 @@ class Settings(BaseSettings):
     # (services/providers/whatsapp/baileys-service/) holds the logged-in
     # WhatsApp session; this is just the URL this provider proxies to.
     whatsapp_baileys_url: str = "http://localhost:3025"
+
+    # --- WhatsMyName provider ---
+    # Local clone of https://github.com/WebBreacher/WhatsMyName — its
+    # wmn-data.json detection dataset is read directly (no install needed).
+    # Defaults to external/WhatsMyName.
+    whatsmyname_project_path: str | None = None
+
+    # --- Ignorant provider ---
+    # Local clone of https://github.com/megadose/ignorant — its modules/ site
+    # checkers are imported in-process (see providers/ignorant), like holehe.
+    # Defaults to external/ignorant.
+    ignorant_project_path: str | None = None
+
+    # --- Social Analyzer provider ---
+    # Local clone of https://github.com/qeeqbox/social-analyzer — its app.py is
+    # imported in-process (see providers/socialanalyzer). Defaults to
+    # external/social-analyzer. Needs tld/langdetect/galeodes (requirements.txt).
+    socialanalyzer_project_path: str | None = None
+
+    # --- GHunt provider ---
+    # Local clone of https://github.com/mxrch/GHunt — its ghunt/ package is
+    # imported in-process (see providers/ghunt). Defaults to external/GHunt.
+    ghunt_project_path: str | None = None
+    # GHunt session file (cookies + OSIDs + Android master token) produced once
+    # by `ghunt login`. Defaults to GHunt's own path (~/.malfrats/ghunt/creds.m);
+    # set this to point at a session generated elsewhere. Without a valid session
+    # the provider returns only the credential-free registration check.
+    ghunt_creds_path: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

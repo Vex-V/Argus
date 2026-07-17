@@ -29,7 +29,7 @@ from shared.config import settings
 
 log = logging.getLogger("providers.holehe")
 
-_HOLEHE_ROOT = Path(settings.holehe_project_path or Path(__file__).resolve().parents[3] / "holehe")
+_HOLEHE_ROOT = Path(settings.holehe_project_path or Path(__file__).resolve().parents[3] / "external" / "holehe")
 
 PER_SITE_TIMEOUT = 10   # seconds, per HTTP call (httpx client timeout)
 SCAN_TIMEOUT = 60       # seconds, wall-clock cap for the whole scan

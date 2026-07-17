@@ -11,7 +11,7 @@ Replaces InsightFace: insightface's onnxruntime/numpy pins have no Python
 facenet-pytorch's own code both work fine on 3.13; only facenet-pytorch's
 *declared* dependency pins (numpy<2, torch<2.3) are stale, so it's installed
 with --no-deps against a modern torch/torchvision/numpy stack instead — see
-requirements-ml.txt.
+the heavy-ML-deps section at the bottom of requirements.txt.
 """
 import base64
 import io

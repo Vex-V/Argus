@@ -26,16 +26,44 @@ redscrapslib==0.1.6
 browser_cookie3==0.20.1
 # maigret is installed separately (heavy, pins many deps) — see README.
 # Run:  pip install maigret   then verify:  maigret testuser123 --top-sites 50
-# Holehe provider: local clone at holehe/, imported in-process (not pip-installed
-# — see services/providers/holehe/provider.py). These are its own runtime deps.
+# Holehe provider: local clone at external/holehe/, imported in-process (not
+# pip-installed — see services/providers/holehe/provider.py). These are its own runtime deps.
+# The ignorant provider (phone registration checks) is holehe's sibling and
+# reuses the same runtime deps (trio + httpx + bs4) — no extra install.
 trio==0.33.0
 termcolor==3.3.0
 tqdm==4.68.3
 colorama==0.4.6
+# WhatsMyName provider: reads external/WhatsMyName/wmn-data.json directly and
+# checks sites with httpx (already above) — no extra deps.
+# Social Analyzer provider: local clone at external/social-analyzer/, imported
+# in-process (services/providers/socialanalyzer/). These are its own runtime
+# deps beyond the ones already listed (bs4/lxml/requests/termcolor). galeodes
+# pulls in selenium; social-analyzer's fast mode doesn't drive a browser, but
+# the import chain needs it present.
+tld==0.13.2
+langdetect==1.0.9
+galeodes==0.7
+# GHunt provider: local clone at external/GHunt/, imported in-process
+# (services/providers/ghunt/). Fully async (asyncio + httpx like the rest of
+# the stack). These are its own runtime deps beyond ones already listed
+# (httpx/beautifulsoup4/Pillow/ImageHash/protobuf). h2 gives httpx the HTTP/2
+# support GHunt's client requests. Profile lookups also need a `ghunt login`
+# session (see README) — the registration check works without one.
+h2==4.3.0
+geopy==2.4.1
+autoslot==2022.12.1
+humanize==4.16.0
+inflection==0.5.1
+jsonpickle==3.4.2
+beautifultable==1.1.0
+alive-progress==3.3.0
+rich-argparse==1.8.0
+dnspython==2.8.0
 
 # --- Moriarty-Project phone enrichment: its Investigation/ modules are
 # imported in-process (services/providers/moriarty/provider.py) from the local
-# clone at Moriarty-Project/, not installed as a package. ---
+# clone at external/Moriarty-Project/, not installed as a package. ---
 requests==2.34.2
 beautifulsoup4==4.15.0
 lxml==6.1.1
@@ -48,8 +76,53 @@ vaderSentiment==3.3.2     # content profiler
 scikit-learn==1.5.2       # content profiler TF-IDF; bumped to 1.5.2 for cp313
 ImageHash==4.3.1          # image similarity (pHash)
 Pillow==12.3.0            # facial + image similarity
+# metadata analyzer — wraps the `exiftool` CLI (a Perl program installed
+# separately; see README human tasks). Pure-Python wrapper, no build step.
+PyExifTool==0.5.6
 
 # --- Dev / test (not required to run the services) ---
 pytest==8.3.2
 pytest-asyncio==0.23.8
 asgi-lifespan==2.1.0
+
+# ============================================================================
+# --- Optional heavy ML deps (facial + text analyzers) ---
+# ============================================================================
+# Large, slow to install, and some have brittle wheel availability on
+# Python 3.13 / Windows. Kept below the core deps so `pip install -r
+# requirements.txt` alone still gets you a working install.
+#
+#   pip install -r requirements.txt
+#   pip install facenet-pytorch --no-deps   # see note below — separate step
+#
+# The services START and the pure-Python analyzers (timing, contacts, text
+# stylometry) run WITHOUT these — the heavy imports are lazy. Install these to
+# enable semantic text similarity, face matching, and language detection.
+#
+# Notes / py3.13 caveats:
+#   * numpy stays at 2.x (installed above with the core deps).
+#   * Pillow bumped to 12.x for full 3.13 support (see Analyzers section above).
+#   * fastText (`fasttext`/`fasttext-wheel`) and InsightFace have no Python
+#     3.13 wheels and fail to build from source on Windows without a C/C++
+#     toolchain (onnxruntime/numpy pins). Replaced:
+#       - language detection: fastText -> lingua-language-detector (ships a
+#         cp313 wheel, bundles its own language models, no separate download).
+#       - face embeddings: InsightFace -> facenet-pytorch (MTCNN detection +
+#         InceptionResnetV1/VGGFace2 embedding, both 512-dim). facenet-pytorch
+#         2.6.0's OWN pins (numpy<2, torch<2.3) are stale and would themselves
+#         force a from-source numpy build on 3.13 — install torch/torchvision
+#         normally first (modern cp313 wheels), THEN facenet-pytorch with
+#         --no-deps so it doesn't downgrade them. The library's actual code
+#         works fine against the newer stack; only its declared pins are old.
+#
+# First run downloads model weights: InceptionResnetV1/VGGFace2 (~110MB),
+# paraphrase-multilingual-MiniLM (~120MB). Lingua's models are bundled in the
+# wheel already (no download).
+
+sentence-transformers==3.0.0
+scipy==1.18.0
+nltk==3.9.1
+lingua-language-detector==2.2.0
+torch==2.12.1
+torchvision==0.27.1
+facenet-pytorch==2.6.0  # install with --no-deps, see note above

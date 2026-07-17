@@ -6,7 +6,7 @@ for independent development/restarts. This module instead imports every
 service's FastAPI app and merges their routes into a single app, bound to
 0.0.0.0 so it's reachable from other machines on the same network, not just
 localhost. Handy for handing one address to someone else to poke at the
-whole toolkit without them starting 14 separate processes.
+whole toolkit without them starting 17 separate processes.
 
 Run it:
     python gateway.py
@@ -44,6 +44,10 @@ SERVICES = [
     ("holehe", "services.providers.holehe.main"),
     ("whatsapp", "services.providers.whatsapp.main"),
     ("yandeximage", "services.providers.yandeximage.main"),
+    ("whatsmyname", "services.providers.whatsmyname.main"),
+    ("ignorant", "services.providers.ignorant.main"),
+    ("socialanalyzer", "services.providers.socialanalyzer.main"),
+    ("ghunt", "services.providers.ghunt.main"),
     ("username", "services.analyzers.username.main"),
     ("facial", "services.analyzers.facial.main"),
     ("text", "services.analyzers.text.main"),
@@ -52,6 +56,7 @@ SERVICES = [
     ("content_profiler", "services.analyzers.content_profiler.main"),
     ("image_similarity", "services.analyzers.image_similarity.main"),
     ("face_pipeline", "services.analyzers.face_pipeline.main"),
+    ("metadata", "services.analyzers.metadata.main"),
 ]
 
 # Framework/per-service routes that legitimately repeat across every sub-app

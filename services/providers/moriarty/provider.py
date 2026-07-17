@@ -29,11 +29,11 @@ from shared.config import settings
 
 log = logging.getLogger("providers.moriarty")
 
-# Moriarty-Project lives at the repo root; this module is at
+# Moriarty-Project lives at external/Moriarty-Project; this module is at
 # services/providers/moriarty/provider.py, so the repo root is three parents up.
 _MORIARTY_ROOT = Path(
     settings.moriarty_project_path
-    or Path(__file__).resolve().parents[3] / "Moriarty-Project"
+    or Path(__file__).resolve().parents[3] / "external" / "Moriarty-Project"
 )
 _lock = asyncio.Lock()
 

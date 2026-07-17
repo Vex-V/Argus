@@ -8,11 +8,15 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 
+from services.providers.ghunt import provider as ghunt
 from services.providers.holehe import provider as holehe
+from services.providers.ignorant import provider as ignorant
 from services.providers.maigret import provider as maigret
 from services.providers.reddit import provider as reddit
+from services.providers.socialanalyzer import provider as socialanalyzer
 from services.providers.telegram import provider as telegram
 from services.providers.whatsapp import provider as whatsapp
+from services.providers.whatsmyname import provider as whatsmyname
 from services.providers.yandeximage import provider as yandeximage
 from shared.evidence import entity_hash
 from shared.schemas import Account, Post
@@ -407,3 +411,277 @@ def test_telegram_post_builder_links_author():
     assert post.author_hash_id == entity_hash("telegram", "alice")
     assert post.hash_id == entity_hash("telegram", "chan:7")
     assert post.content == "hello"
+
+
+# --- whatsmyname detection / normalization / graceful degradation -----------
+def test_whatsmyname_is_hit_requires_code_and_estring():
+    site = {"e_code": 200, "e_string": "profile", "m_string": "not found"}
+    assert whatsmyname._is_hit(site, 200, "<h1>profile page</h1>") is True
+    assert whatsmyname._is_hit(site, 404, "profile") is False          # wrong code
+    assert whatsmyname._is_hit(site, 200, "<h1>welcome</h1>") is False  # e_string absent
+
+
+def test_whatsmyname_is_hit_rejects_when_missing_string_present():
+    # A 200 with the "missing" marker is a false positive, not a hit.
+    site = {"e_code": 200, "e_string": "profile", "m_string": "user not found"}
+    assert whatsmyname._is_hit(site, 200, "profile ... user not found") is False
+
+
+def test_whatsmyname_is_hit_code_only_when_no_estring():
+    site = {"e_code": 200, "e_string": "", "m_string": ""}
+    assert whatsmyname._is_hit(site, 200, "anything") is True
+    assert whatsmyname._is_hit(site, 301, "anything") is False
+
+
+def test_normalize_wmn_result_builds_account():
+    acc = whatsmyname.normalize_wmn_result(
+        {"site_name": "GitHub", "username": "fox", "url": "https://github.com/fox", "category": "coding"},
+        "fox",
+    )
+    assert isinstance(acc, Account)
+    assert acc.platform == "github"
+    assert acc.username == "fox"
+    assert acc.hash_id == entity_hash("github", "fox")
+    assert acc.profile_url == "https://github.com/fox"
+    assert acc.raw_data["category"] == "coding"
+
+
+@pytest.mark.asyncio
+async def test_whatsmyname_check_empty_when_dataset_absent(monkeypatch):
+    monkeypatch.setattr(whatsmyname, "_load_sites", lambda: [])
+    assert await whatsmyname.check_username("anyone") == []
+
+
+@pytest.mark.asyncio
+async def test_whatsmyname_search_normalizes_hits(monkeypatch):
+    async def fake_check(username):
+        return [{"site_name": "GitHub", "username": username, "url": "https://github.com/fox"}]
+
+    monkeypatch.setattr(whatsmyname, "check_username", fake_check)
+    accounts = await whatsmyname.search("fox")
+    assert len(accounts) == 1
+    assert accounts[0].platform == "github"
+
+
+# --- ignorant number parsing / normalization / graceful degradation ---------
+def test_ignorant_split_number_with_explicit_country_code():
+    assert ignorant.split_number("98765 43210", "91") == ("91", "9876543210")
+    assert ignorant.split_number("9876543210", "+91") == ("91", "9876543210")
+
+
+def test_ignorant_split_number_parses_full_international():
+    # +1 202-555-0143 (US)
+    assert ignorant.split_number("+12025550143", None) == ("1", "2025550143")
+
+
+def test_ignorant_split_number_returns_none_when_unresolvable():
+    assert ignorant.split_number("not-a-number", None) is None
+
+
+def test_normalize_ignorant_result_shape():
+    hit = ignorant.normalize_ignorant_result(
+        {"name": "instagram", "domain": "instagram.com", "method": "register",
+         "frequent_rate_limit": False, "rateLimit": False, "exists": True},
+        "91", "9876543210",
+    )
+    assert hit == {
+        "platform": "instagram.com",
+        "phone": "+919876543210",
+        "country_code": "91",
+        "exists": True,
+        "method": "register",
+        "frequent_rate_limit": False,
+        "rate_limited": False,
+    }
+
+
+@pytest.mark.asyncio
+async def test_ignorant_check_empty_when_clone_absent(monkeypatch):
+    monkeypatch.setattr(ignorant, "_ensure_on_path", lambda: False)
+    assert await ignorant.check_phone("91", "9876543210") == []
+
+
+@pytest.mark.asyncio
+async def test_ignorant_search_filters_to_hits_and_normalizes(monkeypatch):
+    async def fake_check_phone(cc, national):
+        return [
+            {"name": "instagram", "domain": "instagram.com", "exists": True},
+            {"name": "amazon", "domain": "amazon.com", "exists": False},
+        ]
+
+    monkeypatch.setattr(ignorant, "check_phone", fake_check_phone)
+    hits = await ignorant.search("+919876543210")
+    assert len(hits) == 1
+    assert hits[0]["platform"] == "instagram.com"
+    assert hits[0]["exists"] is True
+
+
+@pytest.mark.asyncio
+async def test_ignorant_search_empty_when_number_unresolvable(monkeypatch):
+    assert await ignorant.search("garbage", None) == []
+
+
+# --- social-analyzer normalization / graceful degradation -------------------
+def test_socialanalyzer_platform_from_link_strips_www():
+    assert socialanalyzer._platform_from_link("https://www.github.com/fox") == "github.com"
+    assert socialanalyzer._platform_from_link("https://twitter.com/fox") == "twitter.com"
+    assert socialanalyzer._platform_from_link("") == "unknown"
+
+
+def test_normalize_socialanalyzer_result_builds_account():
+    acc = socialanalyzer.normalize_socialanalyzer_result(
+        {"link": "https://github.com/fox", "rate": "%100", "title": "fox (GitHub)"},
+        "fox",
+    )
+    assert isinstance(acc, Account)
+    assert acc.platform == "github.com"
+    assert acc.username == "fox"
+    assert acc.hash_id == entity_hash("github.com", "fox")
+    assert acc.profile_url == "https://github.com/fox"
+    assert acc.raw_data["rate"] == "%100"
+
+
+def test_socialanalyzer_search_username_empty_when_module_absent(monkeypatch):
+    monkeypatch.setattr(socialanalyzer, "_load_module", lambda: None)
+    assert socialanalyzer.search_username("anyone") == []
+
+
+@pytest.mark.asyncio
+async def test_socialanalyzer_search_normalizes_detected(monkeypatch):
+    def fake_run(username, top=0, websites="all"):
+        return [{"link": "https://github.com/fox", "rate": "%100"}]
+
+    monkeypatch.setattr(socialanalyzer, "search_username", fake_run)
+    accounts = await socialanalyzer.search("fox")
+    assert len(accounts) == 1
+    assert accounts[0].platform == "github.com"
+
+
+# --- GHunt normalization / graceful degradation -----------------------------
+class _FakeContainer(dict):
+    """Mirrors GHunt's PersonContainers: dict keyed by container name."""
+
+
+def _fake_person():
+    """A minimal stand-in for GHunt's People API `Person` (PROFILE container)."""
+    from types import SimpleNamespace as NS
+
+    return NS(
+        personId="123456789",
+        emails=_FakeContainer({"PROFILE": NS(value="jane@gmail.com")}),
+        names=_FakeContainer({"PROFILE": NS(fullname="Jane Doe")}),
+        profilePhotos=_FakeContainer({"PROFILE": NS(isDefault=False, url="https://pic/jane.jpg")}),
+        coverPhotos=_FakeContainer({"PROFILE": NS(isDefault=True, url="https://cover")}),
+        sourceIds=_FakeContainer({"PROFILE": NS(lastUpdated=datetime(2025, 1, 2, tzinfo=timezone.utc))}),
+        profileInfos=_FakeContainer({"PROFILE": NS(userTypes=["GOOGLE_USER"])}),
+        inAppReachability=_FakeContainer({"PROFILE": NS(apps=["Maps", "Photos"])}),
+        extendedData=NS(
+            dynamiteData=NS(entityType="PERSON", customerId=""),
+            gplusData=NS(isEntrepriseUser=False),
+        ),
+    )
+
+
+def test_normalize_person_builds_account_with_google_extras():
+    acc = ghunt.normalize_person(_fake_person(), "jane@gmail.com", registered=True)
+    assert acc["platform"] == "google"
+    assert acc["username"] == "jane@gmail.com"
+    assert acc["email"] == "jane@gmail.com"
+    assert acc["display_name"] == "Jane Doe"
+    assert acc["hash_id"] == entity_hash("google", "123456789")
+    assert acc["avatar_url"] == "https://pic/jane.jpg"
+    rd = acc["raw_data"]
+    assert rd["gaia_id"] == "123456789"
+    assert rd["registered_on_google"] is True
+    assert rd["custom_profile_picture"] is True
+    assert rd["cover_photo_url"] is None            # default cover → dropped
+    assert rd["last_profile_edit"] == "2025-01-02T00:00:00+00:00"
+    assert rd["activated_google_services"] == ["Maps", "Photos"]
+    assert rd["user_types"] == ["GOOGLE_USER"]
+
+
+def test_ghunt_registration_only_returns_stub_when_registered():
+    out = ghunt._registration_only("jane@gmail.com", registered=True)
+    assert len(out) == 1
+    assert out[0]["platform"] == "google"
+    assert out[0]["raw_data"] == {"registered_on_google": True, "profile_available": False}
+
+
+def test_ghunt_registration_only_empty_when_not_registered():
+    assert ghunt._registration_only("nobody@gmail.com", registered=False) == []
+    assert ghunt._registration_only("nobody@gmail.com", registered=None) == []
+
+
+@pytest.mark.asyncio
+async def test_ghunt_search_reports_error_when_clone_absent(monkeypatch):
+    monkeypatch.setattr(ghunt, "_ensure_on_path", lambda: False)
+    results, errors = await ghunt.search("jane@gmail.com")
+    assert results == []
+    assert errors and "clone not found" in errors[0]
+
+
+def test_normalize_person_gaia_route_derives_email_and_omits_registered():
+    # gaia route passes no email/registered: email comes from the profile,
+    # and the registration field is omitted rather than reported as False.
+    acc = ghunt.normalize_person(_fake_person())
+    assert acc["email"] == "jane@gmail.com"          # pulled from PROFILE container
+    assert acc["username"] == "jane@gmail.com"
+    assert acc["hash_id"] == entity_hash("google", "123456789")
+    assert "registered_on_google" not in acc["raw_data"]
+
+
+@pytest.mark.asyncio
+async def test_ghunt_lookup_gaia_reports_error_when_clone_absent(monkeypatch):
+    monkeypatch.setattr(ghunt, "_ensure_on_path", lambda: False)
+    results, errors = await ghunt.lookup_gaia("123456789")
+    assert results == []
+    assert errors and "clone not found" in errors[0]
+
+
+def test_ghunt_maps_status_map_covers_gmaps_err_strings():
+    # every err string gmaps.get_reviews can return maps to a stable status
+    assert ghunt._MAPS_STATUS[""] == "ok"
+    assert ghunt._MAPS_STATUS["failed"] == "ip_blocked"
+    assert ghunt._MAPS_STATUS["empty"] == "no_public_reviews"
+    assert ghunt._MAPS_STATUS["private"] == "private"
+
+
+@pytest.mark.asyncio
+async def test_ghunt_maps_reviews_reports_error_when_clone_absent(monkeypatch):
+    monkeypatch.setattr(ghunt, "_ensure_on_path", lambda: False)
+    results, errors = await ghunt.maps_reviews("123456789")
+    assert results == []
+    assert errors and "clone not found" in errors[0]
+
+
+@pytest.mark.asyncio
+async def test_ghunt_maps_contributions_passes_scraped_items_through(monkeypatch):
+    scraped = [
+        {"review_id": "r1", "place": "Taco Bell", "address": "…", "rating": 5,
+         "date": "a year ago", "review_text": "great", "owner_response": "thanks"},
+    ]
+
+    async def fake_scrape(gaia_id, max_items=50):
+        return scraped
+
+    # scrape_contributions is imported inside maps_contributions from the
+    # maps_scraper module, so patch it at the source.
+    from services.providers.ghunt import maps_scraper
+    monkeypatch.setattr(maps_scraper, "scrape_contributions", fake_scrape)
+
+    results, errors = await ghunt.maps_contributions("123456789")
+    assert results == scraped
+    assert errors == []
+
+
+@pytest.mark.asyncio
+async def test_ghunt_maps_contributions_errors_when_nothing_scraped(monkeypatch):
+    async def fake_scrape(gaia_id, max_items=50):
+        return []
+
+    from services.providers.ghunt import maps_scraper
+    monkeypatch.setattr(maps_scraper, "scrape_contributions", fake_scrape)
+
+    results, errors = await ghunt.maps_contributions("123456789")
+    assert results == []
+    assert errors and "no public Maps contributions" in errors[0]

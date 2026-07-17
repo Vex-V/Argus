@@ -2,7 +2,7 @@
 
 This is a *pure HTTP client* of the existing Argus API. It imports nothing from
 the Argus services and modifies no Argus code: every tool below simply calls a
-route (the same ones documented in ENDPOINTS.md / routes.md) over HTTP, exactly
+route (the same ones documented in routes.md) over HTTP, exactly
 like `curl` would. Point it at a running gateway (`python gateway.py`, all
 routes on one port) or at the standalone per-port services — either works,
 because the gateway keeps every route's original path.

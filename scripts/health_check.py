@@ -19,6 +19,10 @@ SERVICES = {
     "Holehe Provider": 8024,
     "WhatsApp Provider": 8025,
     "Yandex Image Provider": 8026,
+    "WhatsMyName Provider": 8027,
+    "Ignorant Provider": 8028,
+    "Social Analyzer Provider": 8029,
+    "GHunt Provider": 8030,
     # Analyzers
     "Username Analyzer": 8010,
     "Facial Analyzer": 8011,
@@ -28,6 +32,7 @@ SERVICES = {
     "Content Profiler": 8015,
     "Image Similarity": 8016,
     "Face Pipeline": 8017,
+    "Image Metadata": 8018,
 }
 
 
